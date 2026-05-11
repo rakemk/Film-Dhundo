@@ -1,0 +1,171 @@
+# FilmDhundo — Setup Guide
+
+FilmDhundo is a movie discovery platform that shows users 
+where to watch Bollywood and Hollywood movies on Indian OTT platforms.
+Monetized via affiliate links, ads, and premium subscriptions.
+
+---
+
+## Step 1 — Get your API keys (all free)
+
+### TMDB API key
+1. Go to https://www.themoviedb.org/signup
+2. Verify your email
+3. Go to Settings → API → Create → Developer
+4. Fill the form (App name: FilmDhundo, Use: Personal)
+5. Copy your API Read Access Token
+6. Paste in .env as TMDB_API_KEY
+
+### YouTube Data API key
+1. Go to https://console.cloud.google.com
+2. Create new project → name it "FilmDhundo"
+3. Enable "YouTube Data API v3"
+4. Go to Credentials → Create API Key
+5. Paste in .env as YOUTUBE_API_KEY
+
+### Firebase setup
+1. Go to https://console.firebase.google.com
+2. Create new project → name "filmdhundo"
+3. Add a Web app → register
+4. Go to Firestore Database → Create database → Start in test mode
+5. Go to Project Settings → Service Accounts → Generate new private key
+6. Download JSON file, copy values to .env:
+   FIREBASE_PROJECT_ID=your-project-id
+   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@xxx.iam.gserviceaccount.com
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+### Razorpay setup
+1. Go to https://razorpay.com → Sign up free
+2. Submit PAN card + bank account details
+3. Wait 1-2 days for approval
+4. Go to Settings → API Keys → Generate Live Keys
+5. Copy Key ID and Secret to .env
+6. For testing use test keys first (rzp_test_...)
+
+---
+
+## Step 2 — Set up affiliate links (free)
+
+### Amazon Associates (for Prime Video)
+1. Go to https://associates.amazon.in
+2. Sign in with Amazon account
+3. Enter website: https://filmdhundo.com
+4. Get your tracking ID (like filmdhundo-21)
+5. Generate affiliate link for Prime signup page
+6. Replace in public/js/utils.js → OTT_CONFIG.prime.affiliateUrl
+
+### vCommission (for Hotstar, ZEE5, SonyLIV)
+1. Go to https://www.vcommission.com
+2. Register as Publisher
+3. Search for: Hotstar, ZEE5, SonyLIV campaigns
+4. Apply to each — approved in 2-3 days
+5. Get tracking links for each platform
+6. Replace in public/js/utils.js → OTT_CONFIG
+
+### PropellerAds (for display ads — instant approval)
+1. Go to https://propellerads.com
+2. Sign up as Publisher
+3. Add your site
+4. Get ad code
+5. Paste ad code in public/js/main.js → loadAds() function
+
+---
+
+## Step 3 — Run locally
+
+npm install
+cp .env.example .env
+# Fill in your API keys in .env
+node server/index.js
+# Open http://localhost:3000
+
+---
+
+## Step 4 — Deploy to Vercel (free)
+
+1. Push code to GitHub:
+   git init
+   git add .
+   git commit -m "FilmDhundo launch"
+   git remote add origin https://github.com/yourusername/filmdhundo
+   git push -u origin main
+
+2. Go to https://vercel.com → Sign up with GitHub
+3. Click "Add New Project" → Import your GitHub repo
+4. Add all environment variables from your .env file
+5. Click Deploy → wait 2 minutes
+6. Your site is live at https://filmdhundo.vercel.app
+
+### Connect custom domain (optional)
+1. Buy domain on GoDaddy or Namecheap (~₹800/year)
+2. In Vercel → Domains → Add domain
+3. Update DNS records as shown by Vercel
+4. SSL certificate is added automatically (free)
+
+---
+
+## Step 5 — Google Search Console setup
+
+1. Go to https://search.google.com/search-console
+2. Add property → URL prefix → https://filmdhundo.com
+3. Verify via HTML file (download and add to public/ folder)
+4. Go to Sitemaps → Add sitemap → https://filmdhundo.com/sitemap.xml
+5. Submit → Google will start indexing your pages
+6. Check back in 3-5 days to see first indexed pages
+
+---
+
+## Step 6 — Google Analytics setup
+
+1. Go to https://analytics.google.com
+2. Create account → Create property → Web
+3. Enter your domain
+4. Copy Measurement ID (G-XXXXXXXXXX)
+5. Paste in .env as GA_MEASUREMENT_ID
+6. Analytics are now tracking all page views automatically
+
+---
+
+## SEO checklist after launch
+
+- [ ] Submit sitemap to Google Search Console
+- [ ] Check all movie pages have unique title + description
+- [ ] Verify JSON-LD schema using Google Rich Results Test
+- [ ] Test mobile speed at https://pagespeed.web.dev
+- [ ] Share 5 movie pages in WhatsApp groups (first backlinks)
+- [ ] Answer 3 Quora questions with your site link
+- [ ] Post in r/bollywood on Reddit with your site link
+
+---
+
+## How to add new movies
+
+Movies are fetched automatically from TMDB API every hour.
+No manual work needed. New releases appear automatically.
+
+To manually feature a movie:
+1. Find movie ID on TMDB (in the URL when you view a movie)
+2. Add to server/featured.json: { "movie_id": 12345 }
+3. Featured movies appear at top of homepage
+
+---
+
+## Revenue tracking
+
+Check your earnings:
+- Amazon Associates: https://associates.amazon.in → Reports
+- vCommission: https://www.vcommission.com → Reports  
+- Razorpay: https://dashboard.razorpay.com → Transactions
+- Google Analytics: User count, page views, top pages
+
+---
+
+## Support
+
+If stuck on any step, search:
+- "TMDB API setup tutorial"
+- "Firebase Firestore Node.js tutorial"  
+- "Razorpay integration Express.js"
+- "Vercel deploy Node.js"
+
+All are free resources on YouTube in Hindi.

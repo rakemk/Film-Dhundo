@@ -1,0 +1,307 @@
+Build a full-stack movie discovery web app called "FilmDhundo" using the following stack and requirements. Do not ask questions — build everything completely.
+
+=== TECH STACK ===
+- Frontend: HTML, CSS, Vanilla JavaScript (no frameworks)
+- Backend: Node.js with Express.js
+- Database: Firebase Firestore (free tier)
+- Hosting-ready: Vercel / Replit deployment
+- APIs: TMDB API (free), YouTube Data API (free)
+- Payments: Razorpay (Indian payment gateway)
+- Analytics: Google Analytics 4 (gtag.js)
+
+=== PROJECT STRUCTURE ===
+filmdhundo/
+├── public/
+│   ├── index.html          (homepage — trending movies grid)
+│   ├── movie.html          (individual movie SEO page)
+│   ├── search.html         (search results page)
+│   ├── watchlist.html      (user watchlist page)
+│   ├── premium.html        (premium plans page)
+│   ├── sitemap.xml         (auto-generated sitemap)
+│   ├── robots.txt
+│   ├── css/
+│   │   └── style.css       (all styles)
+│   └── js/
+│       ├── main.js         (homepage logic)
+│       ├── movie.js        (movie page logic)
+│       ├── search.js       (search logic)
+│       ├── watchlist.js    (watchlist logic)
+│       ├── premium.js      (premium + Razorpay logic)
+│       └── utils.js        (shared helper functions)
+├── server/
+│   ├── index.js            (Express server entry point)
+│   ├── routes/
+│   │   ├── movies.js       (TMDB proxy API routes)
+│   │   ├── seo.js          (sitemap + SEO page generation)
+│   │   ├── payment.js      (Razorpay webhook handler)
+│   │   └── users.js        (user auth + premium status)
+│   └── firebase.js         (Firebase admin SDK config)
+├── .env                    (environment variables)
+├── package.json
+└── vercel.json             (Vercel deployment config)
+
+=== ENVIRONMENT VARIABLES (.env) ===
+TMDB_API_KEY=your_tmdb_key_here
+YOUTUBE_API_KEY=your_youtube_key_here
+RAZORPAY_KEY_ID=rzp_live_your_key_here
+RAZORPAY_KEY_SECRET=your_secret_here
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_PRIVATE_KEY=your_private_key
+FIREBASE_CLIENT_EMAIL=your_client_email
+GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
+=== PAGE 1: index.html (Homepage) ===
+- Fixed top navbar with logo "FilmDhundo", search bar, watchlist icon, premium button
+- Stats bar showing: total movies indexed, OTT platforms count, SEO pages count
+- Horizontal scrollable filter tabs: Sab Kuch | Prime Video | Netflix | Hotstar | ZEE5 | SonyLIV | MX Player | Marathi | Hindi | New This Week
+- Movie grid using CSS Grid (auto-fill, minmax 150px)
+- Each movie card shows:
+  * Poster image from TMDB
+  * OTT platform badge (colored pill top-right)
+  * Movie title
+  * Star rating
+  * Release year
+  * Language badge
+- Clicking a card navigates to /movie/{slug}-{year} (SEO-friendly URL)
+- Infinite scroll — load more movies as user scrolls down
+- "This Week on OTT" section below main grid
+- Footer with Privacy Policy, About, Contact links
+
+=== PAGE 2: movie.html (Individual SEO Movie Page) ===
+This is the MOST IMPORTANT page for SEO. Build it as a template.
+- Dynamic URL: /movies/{movie-name-slug}-{year}
+- Full SEO meta tags:
+  * <title>{Movie Name} ({Year}) — {OTT Platform} pe Dekho | FilmDhundo</title>
+  * <meta name="description" content="{Movie} ab {OTT} pe available hai. {Language} mein dekhein.">
+  * Open Graph tags for WhatsApp/Facebook sharing
+  * JSON-LD schema markup for Movie type
+  * Canonical URL tag
+- Page content:
+  * Large movie poster (left) + details (right) layout on desktop, stacked on mobile
+  * Title, year, rating, genres, runtime, languages
+  * "Kahan Dekhein" section with colored OTT buttons (each button = affiliate link)
+  * YouTube trailer embed (fetched via YouTube API)
+  * Movie overview/description in Hindi
+  * Cast section with profile photos
+  * "Isse Milti Julti Movies" (similar movies) horizontal scroll
+  * User review section (stored in Firestore)
+  * Social share buttons (WhatsApp, Facebook, Twitter/X)
+- WhatsApp share button text: "{Movie Name} {OTT Platform} pe available hai! Yahan dekho: {URL}"
+
+=== PAGE 3: search.html ===
+- Real-time search as user types (debounced 300ms)
+- Search TMDB API with language=hi-IN
+- Show results in same grid format as homepage
+- "Koi result nahi mila" empty state in Hindi
+- Search suggestions dropdown showing top 5 matches
+
+=== PAGE 4: watchlist.html ===
+- Free users: max 5 movies in watchlist (stored in localStorage)
+- Premium users: unlimited watchlist (stored in Firestore)
+- Show watchlist as grid with remove button on each card
+- "Premium lo aur unlimited movies save karo" upsell banner for free users
+
+=== PAGE 5: premium.html ===
+3 pricing cards:
+1. Free — ₹0/month
+   Features: Browse movies, OTT finder, basic search, 1 watchlist, ads shown
+2. Premium — ₹49/month (highlighted with border accent)
+   Features: No ads, unlimited watchlist, advanced filters, new release alerts, regional language filter
+3. Annual — ₹399/year
+   Features: Everything in Premium + save ₹189 + priority support + early access
+
+Razorpay integration:
+- On clicking Subscribe, open Razorpay checkout modal
+- After payment success, call /api/payment/verify endpoint
+- On verification success, save premium status to Firestore with expiry date
+- Show success screen: "Premium Shuru Ho Gaya!"
+- Handle payment failure with retry option
+
+=== BACKEND: server/index.js ===
+Express server with these API routes:
+
+GET /api/movies/trending
+- Fetch from TMDB /trending/movie/week
+- Add OTT platform mapping (assign platform based on movie id)
+- Cache response for 1 hour
+- Return: id, title, poster_path, vote_average, release_date, ott_platform, slug
+
+GET /api/movies/search?q={query}
+- Fetch from TMDB /search/movie with language=hi-IN
+- Return top 20 results with same fields
+
+GET /api/movies/{id}
+- Fetch full movie details from TMDB
+- Fetch YouTube trailer via YouTube API
+- Return all details including cast, similar movies, trailer URL
+
+GET /api/seo/sitemap
+- Generate sitemap.xml dynamically
+- Include all movie pages, list pages, homepage
+- Return valid XML
+
+POST /api/payment/create-order
+- Create Razorpay order with amount in paise
+- Return order_id, key_id
+
+POST /api/payment/verify
+- Verify Razorpay payment signature using crypto hmac
+- On success, update Firestore: users/{uid}/premium = true, expiry = Date.now() + 30days
+- Return success/failure status
+
+POST /api/users/watchlist
+- Save movie to Firestore watchlist for authenticated user
+- Check if user is premium for unlimited watchlist
+- Free users: reject if watchlist.length >= 5
+
+=== OTT PLATFORM AFFILIATE LINKS ===
+Store these in utils.js as a config object:
+const OTT_CONFIG = {
+  prime: {
+    name: "Amazon Prime Video",
+    color: "#00A8E0",
+    affiliateUrl: "https://amzn.to/REPLACE_WITH_YOUR_TAG",
+    buttonText: "Prime pe Dekho"
+  },
+  netflix: {
+    name: "Netflix",
+    color: "#E50914",
+    affiliateUrl: "https://netflix.com?ref=REPLACE",
+    buttonText: "Netflix pe Dekho"
+  },
+  hotstar: {
+    name: "Disney+ Hotstar",
+    color: "#1F80E0",
+    affiliateUrl: "https://REPLACE_VCOMMISSION_LINK",
+    buttonText: "Hotstar pe Dekho"
+  },
+  zee5: {
+    name: "ZEE5",
+    color: "#7B2D8B",
+    affiliateUrl: "https://REPLACE_VCOMMISSION_LINK",
+    buttonText: "ZEE5 pe Dekho"
+  },
+  sony: {
+    name: "SonyLIV",
+    color: "#0057A8",
+    affiliateUrl: "https://REPLACE_VCOMMISSION_LINK",
+    buttonText: "SonyLIV pe Dekho"
+  },
+  mx: {
+    name: "MX Player",
+    color: "#FF6B35",
+    affiliateUrl: "https://mxplayer.in?ref=REPLACE",
+    buttonText: "MX pe Muft Dekho"
+  }
+}
+
+=== SEO REQUIREMENTS (CRITICAL) ===
+Every movie page must have:
+1. Unique <title> tag under 60 characters
+2. Unique <meta description> under 160 characters
+3. JSON-LD schema:
+{
+  "@context": "https://schema.org",
+  "@type": "Movie",
+  "name": "{title}",
+  "datePublished": "{year}",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{rating}",
+    "bestRating": "10"
+  }
+}
+4. Open Graph tags for social sharing
+5. Canonical URL
+6. robots.txt allowing all pages
+7. sitemap.xml with all movie URLs
+
+=== HINDI-FIRST UI TEXT ===
+Use these Hindi strings throughout the UI:
+- Search placeholder: "Movie ya series dhundo..."
+- Empty state: "Koi movie nahi mili"
+- Loading: "Movies la rahe hain..."
+- Watchlist button: "Baad Mein Dekho"
+- Share button: "Dosto Ko Batao"
+- OTT section heading: "Kahan Dekhein"
+- Similar movies: "Isse Milti Julti Movies"
+- New this week: "Is Hafte Kya Naya"
+- Premium upsell: "Ads hatao, aur features pao — sirf ₹49/mahine"
+
+=== DESIGN SYSTEM ===
+Colors:
+--primary: #E24B4A (red — brand color)
+--bg-primary: #ffffff
+--bg-secondary: #f5f5f5
+--bg-dark: #111111
+--text-primary: #1a1a1a
+--text-secondary: #666666
+--border: #e0e0e0
+
+Typography:
+- Font: Google Fonts — "Noto Sans Devanagari" for Hindi text, "Inter" for English
+- Load both via <link> in <head>
+- Base font size: 14px
+- Headings: 500 weight
+
+Cards:
+- border-radius: 10px
+- border: 1px solid var(--border)
+- Hover: translateY(-3px) with transition 0.2s
+
+=== MOBILE FIRST ===
+- All pages fully responsive
+- Movie grid: 2 columns on mobile, 4 on tablet, 6 on desktop
+- Navbar: hamburger menu on mobile
+- Movie page: stacked layout on mobile
+- Touch-friendly tap targets (min 44px)
+- Fast load: lazy load all images with loading="lazy"
+
+=== PERFORMANCE ===
+- Cache TMDB API responses server-side for 1 hour using node-cache
+- Lazy load images
+- Debounce search input 300ms
+- Minify CSS and JS for production
+
+=== package.json dependencies ===
+{
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.4.0",
+    "razorpay": "^2.9.2",
+    "firebase-admin": "^11.10.1",
+    "node-cache": "^5.1.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1"
+  }
+}
+
+=== DEPLOYMENT (vercel.json) ===
+{
+  "version": 2,
+  "builds": [
+    { "src": "server/index.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "server/index.js" },
+    { "src": "/movies/(.*)", "dest": "public/movie.html" },
+    { "src": "/(.*)", "dest": "public/$1" }
+  ]
+}
+
+=== FINAL INSTRUCTIONS FOR REPLIT ===
+1. Create ALL files listed in the project structure
+2. Write complete working code — no placeholders, no "TODO" comments
+3. Every page must be fully functional and styled
+4. Hindi text must display correctly using Noto Sans Devanagari font
+5. Server must start with: node server/index.js
+6. Add a README.md with setup instructions:
+   - How to get TMDB API key
+   - How to set up Firebase
+   - How to set up Razorpay
+   - How to replace affiliate links
+   - How to deploy to Vercel
+7. All TMDB API calls go through the backend server (never expose API key in frontend)
+8. Build everything now. Start with package.json, then server, then all HTML pages.

@@ -1,0 +1,192 @@
+=== ADVANCED SEO SYSTEM (ADD TO PROJECT) ===
+
+Create a file: server/routes/seo.js with full SEO automation:
+
+--- SITEMAP GENERATOR ---
+GET /sitemap.xml
+- Auto-fetch all movies from TMDB (top 500 popular Hindi movies)
+- Generate sitemap.xml with these URL types:
+  1. Homepage: https://filmdhundo.com/ (priority 1.0, daily)
+  2. Movie pages: https://filmdhundo.com/movies/{slug}-{year} (priority 0.8, weekly)
+  3. List pages: priority 0.9, daily
+  4. Search page: priority 0.6, weekly
+- Include <lastmod>, <changefreq>, <priority> for every URL
+- Submit-ready format for Google Search Console
+- Regenerate every 24 hours automatically using setInterval
+
+--- ROBOTS.TXT ---
+Create public/robots.txt:
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Sitemap: https://filmdhundo.com/sitemap.xml
+
+--- JSON-LD SCHEMA FOR EVERY PAGE ---
+Homepage schema (WebSite type):
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "FilmDhundo",
+  "url": "https://filmdhundo.com",
+  "description": "Bollywood aur Hollywood movies kahan dekhein — OTT platform finder for India",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://filmdhundo.com/search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+
+Movie page schema (Movie type):
+{
+  "@context": "https://schema.org",
+  "@type": "Movie",
+  "name": "{title}",
+  "datePublished": "{year}",
+  "description": "{overview}",
+  "image": "https://image.tmdb.org/t/p/w500{poster_path}",
+  "genre": ["{genre1}", "{genre2}"],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{vote_average}",
+    "ratingCount": "{vote_count}",
+    "bestRating": "10",
+    "worstRating": "1"
+  },
+  "director": { "@type": "Person", "name": "{director_name}" },
+  "actor": [{ "@type": "Person", "name": "{actor1}" }]
+}
+
+List page schema (ItemList type):
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Best Movies on Amazon Prime India 2024",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "{movie1}", "url": "{url1}" },
+    { "@type": "ListItem", "position": 2, "name": "{movie2}", "url": "{url2}" }
+  ]
+}
+
+--- SEO META TAG GENERATOR (utils/seo.js) ---
+Create a function generateSEOMeta(movie) that returns:
+{
+  title: "{Movie Name} ({Year}) — {OTT} pe Kahan Dekhein | FilmDhundo",
+  description: "{Movie Name} {year} ab {OTT Platform} pe available hai. {Language} mein dekhein. Free trial ke saath abhi shuru karein.",
+  keywords: [
+    "{movie name} OTT platform",
+    "{movie name} kahan dekhein",
+    "{movie name} online dekhein",
+    "{movie name} {OTT name} pe kaise dekhen",
+    "{movie name} {year} full movie",
+    "{movie name} Hindi mein",
+    "{movie name} free mein kaise dekhein"
+  ],
+  ogTitle: "{Movie Name} — {OTT Platform} pe Available | FilmDhundo",
+  ogDescription: "Yeh movie ab {OTT} pe hai! Ek click mein dekho.",
+  ogImage: "https://image.tmdb.org/t/p/w1280{backdrop_path}",
+  canonicalUrl: "https://filmdhundo.com/movies/{slug}-{year}",
+  twitterCard: "summary_large_image"
+}
+Rules:
+- Title must be under 60 characters — truncate movie name if needed
+- Description must be under 160 characters
+- Always include year in title for freshness signal
+- Never duplicate title across pages
+
+--- AUTO SEO PAGES (LIST PAGES) ---
+Create these static-like pages auto-generated from TMDB data.
+Each page refreshes daily. Create routes for all of them:
+
+/best-movies-amazon-prime-india          → Top 20 Prime movies
+/best-movies-netflix-india               → Top 20 Netflix movies
+/best-movies-hotstar-india               → Top 20 Hotstar movies
+/best-movies-zee5-india                  → Top 20 ZEE5 movies
+/new-ott-releases-this-week             → Movies released on OTT this week
+/top-bollywood-movies-2024              → Top Hindi movies this year
+/best-marathi-movies-ott                → Marathi language movies
+/best-south-indian-movies-hindi-dubbed  → South movies dubbed in Hindi
+/free-movies-mx-player                  → Free movies on MX Player
+/movies-releasing-this-friday           → Upcoming OTT releases
+
+Each list page must have:
+- Unique H1: "Best Movies on Amazon Prime India (2024)"
+- Intro paragraph 100-150 words unique content in Hindi + English
+- Movie grid with affiliate links
+- "Last updated: {date}" for freshness
+- Breadcrumb navigation with schema markup
+- Internal links to top 5 movie detail pages
+- "Is hafte naya kya aaya" section at bottom
+
+--- INTERNAL LINKING STRATEGY ---
+In movie.js, after rendering similar movies section:
+- Add "Yeh bhi dekho" section linking to:
+  * Same OTT platform list page
+  * Same genre list page  
+  * Same language list page
+- This creates a web of internal links Google loves
+
+In every list page, link to:
+- Top 5 individual movie pages on that list
+- Related list pages (e.g. Prime page links to Netflix page)
+
+--- PAGE SPEED (CORE WEB VITALS) ---
+Add to every HTML page <head>:
+<link rel="preconnect" href="https://image.tmdb.org">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://image.tmdb.org">
+
+Image optimization in movie cards:
+- Use TMDB w300 size for grid thumbnails (not w500)
+- Use TMDB w500 size for movie detail page only
+- Add width and height attributes to all img tags
+- Add loading="lazy" to all images below fold
+- First 6 images on homepage: loading="eager" (improves LCP score)
+
+--- OPEN GRAPH FOR WHATSAPP SHARING ---
+This is critical — when users share your link on WhatsApp,
+it must show a rich preview card. Add to every movie page:
+<meta property="og:type" content="video.movie" />
+<meta property="og:title" content="{Movie} — {OTT} pe Dekho" />
+<meta property="og:description" content="{Movie} ab {OTT} pe available hai!" />
+<meta property="og:image" content="https://image.tmdb.org/t/p/w1280{backdrop}" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="720" />
+<meta property="og:url" content="https://filmdhundo.com/movies/{slug}" />
+<meta property="og:site_name" content="FilmDhundo" />
+WhatsApp uses og:image to show preview — backdrop image (1280px) works best.
+
+--- GOOGLE SEARCH CONSOLE INTEGRATION ---
+Add to public/js/utils.js:
+After any new movie page is created, ping Google:
+fetch('https://www.google.com/ping?sitemap=https://filmdhundo.com/sitemap.xml')
+Do this once daily via a cron job in server.
+
+--- BREADCRUMB NAVIGATION ---
+Add breadcrumb to every movie page (visible + schema):
+Visible: FilmDhundo > Movies > Bollywood > {Movie Name}
+Schema:
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"name":"Home","item":"https://filmdhundo.com"},
+    {"@type":"ListItem","position":2,"name":"Movies","item":"https://filmdhundo.com/movies"},
+    {"@type":"ListItem","position":3,"name":"{Movie Name}","item":"https://filmdhundo.com/movies/{slug}"}
+  ]
+}
+
+--- FAQ SCHEMA (BONUS RANKING BOOST) ---
+Add FAQ section to every movie page with schema:
+Questions to auto-generate:
+- "{Movie Name} kahan dekhein?" → Answer: "{Movie} {OTT} pe available hai."
+- "{Movie Name} free mein kaise dekhein?" → Answer: "{OTT} ka free trial lo."
+- "{Movie Name} Hindi mein hai?" → Answer: "Haan, {Movie} Hindi mein available hai."
+- "{Movie Name} ka OTT release date kya hai?" → Answer: "{date}"
+This gets you FAQ rich results in Google — more space on search page!
+
+--- HREFLANG (HINDI + ENGLISH) ---
+Add to every page head:
+<link rel="alternate" hreflang="hi" href="https://filmdhundo.com/hi/movies/{slug}" />
+<link rel="alternate" hreflang="en" href="https://filmdhundo.com/movies/{slug}" />
+<link rel="alternate" hreflang="x-default" href="https://filmdhundo.com/movies/{slug}" />
