@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "FilmDhundo"
+version = "1.0.0"
+id = "artifacts/filmdhundo"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20065
+
+[services.development]
+run = "pnpm --filter @workspace/filmdhundo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/filmdhundo", "run", "build" ]
+publicDir = "artifacts/filmdhundo/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20065"
+BASE_PATH = "/"

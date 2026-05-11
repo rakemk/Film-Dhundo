@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: FilmDhundo API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: movies
+    description: Movie discovery endpoints
+  - name: watchlist
+    description: User watchlist
+  - name: payment
+    description: Razorpay payment integration
+  - name: admin
+    description: Admin analytics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,495 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /movies/trending:
+    get:
+      operationId: getTrendingMovies
+      tags: [movies]
+      summary: Get trending movies
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: platform
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Trending movies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieListResponse"
+
+  /movies/search:
+    get:
+      operationId: searchMovies
+      tags: [movies]
+      summary: Search movies
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieListResponse"
+
+  /movies/new-releases:
+    get:
+      operationId: getNewReleases
+      tags: [movies]
+      summary: Get new OTT releases this week
+      responses:
+        "200":
+          description: New releases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieListResponse"
+
+  /movies/{id}:
+    get:
+      operationId: getMovieById
+      tags: [movies]
+      summary: Get movie details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieDetail"
+        "404":
+          description: Not found
+
+  /movies/{id}/similar:
+    get:
+      operationId: getSimilarMovies
+      tags: [movies]
+      summary: Get similar movies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Similar movies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Movie"
+
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [watchlist]
+      summary: Get user watchlist
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Watchlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistItem"
+    post:
+      operationId: addToWatchlist
+      tags: [watchlist]
+      summary: Add movie to watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistItem"
+        "400":
+          description: Watchlist limit reached
+
+  /watchlist/{id}:
+    delete:
+      operationId: deleteWatchlistEntry
+      tags: [watchlist]
+      summary: Remove watchlist item by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+
+  /payment/create-order:
+    post:
+      operationId: createPaymentOrder
+      tags: [payment]
+      summary: Create Razorpay order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentOrderInput"
+      responses:
+        "200":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrder"
+
+  /payment/verify:
+    post:
+      operationId: verifyPayment
+      tags: [payment]
+      summary: Verify Razorpay payment signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentVerifyInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentVerifyResult"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin analytics stats
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/traffic-sources:
+    get:
+      operationId: getTrafficSources
+      tags: [admin]
+      summary: Get traffic source breakdown
+      responses:
+        "200":
+          description: Traffic sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrafficSource"
+
+  /admin/weekly-traffic:
+    get:
+      operationId: getWeeklyTraffic
+      tags: [admin]
+      summary: Get weekly traffic chart data
+      responses:
+        "200":
+          description: Weekly traffic
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DayTraffic"
+
+  /admin/top-seo-pages:
+    get:
+      operationId: getTopSeoPages
+      tags: [admin]
+      summary: Get top performing SEO pages
+      responses:
+        "200":
+          description: Top SEO pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeoPage"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    Movie:
+      type: object
+      required: [id, title, poster_path, vote_average, release_date, ott_platform, slug, language]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        poster_path:
+          type: ["string", "null"]
+        backdrop_path:
+          type: ["string", "null"]
+        vote_average:
+          type: number
+        release_date:
+          type: string
+        ott_platform:
+          type: string
+        slug:
+          type: string
+        language:
+          type: string
+        overview:
+          type: ["string", "null"]
+
+    MovieListResponse:
+      type: object
+      required: [movies, total_pages, page]
+      properties:
+        movies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Movie"
+        total_pages:
+          type: integer
+        page:
+          type: integer
+
+    CastMember:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        character:
+          type: ["string", "null"]
+        profile_path:
+          type: ["string", "null"]
+
+    MovieDetail:
+      type: object
+      required: [id, title, poster_path, vote_average, release_date, ott_platform, slug, language]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        poster_path:
+          type: ["string", "null"]
+        backdrop_path:
+          type: ["string", "null"]
+        vote_average:
+          type: number
+        vote_count:
+          type: integer
+        release_date:
+          type: string
+        runtime:
+          type: ["integer", "null"]
+        ott_platform:
+          type: string
+        slug:
+          type: string
+        language:
+          type: string
+        overview:
+          type: ["string", "null"]
+        genres:
+          type: array
+          items:
+            type: string
+        cast:
+          type: array
+          items:
+            $ref: "#/components/schemas/CastMember"
+        trailer_url:
+          type: ["string", "null"]
+        director:
+          type: ["string", "null"]
+
+    WatchlistItem:
+      type: object
+      required: [id, userId, movieId, title, poster_path, ott_platform, addedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        movieId:
+          type: integer
+        title:
+          type: string
+        poster_path:
+          type: ["string", "null"]
+        ott_platform:
+          type: string
+        slug:
+          type: string
+        addedAt:
+          type: string
+
+    WatchlistInput:
+      type: object
+      required: [userId, movieId, title, ott_platform]
+      properties:
+        userId:
+          type: string
+        movieId:
+          type: integer
+        title:
+          type: string
+        poster_path:
+          type: ["string", "null"]
+        ott_platform:
+          type: string
+        slug:
+          type: string
+
+    PaymentOrderInput:
+      type: object
+      required: [plan, userId]
+      properties:
+        plan:
+          type: string
+        userId:
+          type: string
+
+    PaymentOrder:
+      type: object
+      required: [orderId, keyId, amount, currency]
+      properties:
+        orderId:
+          type: string
+        keyId:
+          type: string
+        amount:
+          type: integer
+        currency:
+          type: string
+
+    PaymentVerifyInput:
+      type: object
+      required: [razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, plan]
+      properties:
+        razorpay_order_id:
+          type: string
+        razorpay_payment_id:
+          type: string
+        razorpay_signature:
+          type: string
+        userId:
+          type: string
+        plan:
+          type: string
+
+    PaymentVerifyResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+
+    AdminStats:
+      type: object
+      required: [dailyUsers, monthlyRevenue, seoPages, premiumUsers, dailyUsersGrowth, revenueGrowth, seoPagesGrowth, premiumGrowth]
+      properties:
+        dailyUsers:
+          type: integer
+        monthlyRevenue:
+          type: integer
+        seoPages:
+          type: integer
+        premiumUsers:
+          type: integer
+        dailyUsersGrowth:
+          type: string
+        revenueGrowth:
+          type: string
+        seoPagesGrowth:
+          type: string
+        premiumGrowth:
+          type: string
+
+    TrafficSource:
+      type: object
+      required: [source, sessions, percentage]
+      properties:
+        source:
+          type: string
+        sessions:
+          type: integer
+        percentage:
+          type: number
+
+    DayTraffic:
+      type: object
+      required: [day, visits]
+      properties:
+        day:
+          type: string
+        visits:
+          type: integer
+
+    SeoPage:
+      type: object
+      required: [url, clicks, status]
+      properties:
+        url:
+          type: string
+        clicks:
+          type: integer
+        status:
+          type: string
