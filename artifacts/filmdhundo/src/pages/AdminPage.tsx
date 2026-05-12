@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { TrendingUp, Users, FileText, Crown, BarChart2, Globe, Settings } from "lucide-react";
+import { useState, useRef } from "react";
+import { TrendingUp, Users, FileText, Crown, BarChart2, Globe, Lock, Eye, EyeOff } from "lucide-react";
 import {
   useGetAdminStats,
   useGetTrafficSources,
@@ -9,6 +9,80 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+const ADMIN_PASSWORD = "yourpassword123";
+const SESSION_KEY = "filmdhundo_admin_auth";
+
+function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
+  const [value, setValue] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (value === ADMIN_PASSWORD) {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      onSuccess();
+    } else {
+      setError(true);
+      setValue("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+            <Lock className="w-5 h-5 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Admin Panel</h1>
+          <p className="text-sm text-muted-foreground mt-1">FilmDhundo ke liye authenticate karein</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type={showPw ? "text" : "password"}
+                value={value}
+                onChange={(e) => { setValue(e.target.value); setError(false); }}
+                placeholder="Admin password daalo"
+                autoFocus
+                className={`w-full px-3 py-2.5 pr-10 text-sm rounded-lg border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors ${
+                  error ? "border-red-500 focus:ring-red-400/40" : "border-border focus:border-primary"
+                }`}
+                data-testid="input-admin-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+                aria-label="Toggle password visibility"
+              >
+                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {error && (
+              <p className="text-xs text-red-500 mt-1.5" data-testid="text-admin-error">
+                Galat password. Dobara try karein.
+              </p>
+            )}
+          </div>
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="button-admin-login">
+            Login
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 const TABS = ["Analytics", "SEO Generator", "Affiliates", "Premium", "Earnings"];
 
@@ -54,7 +128,10 @@ function WeeklyChart({ data }: { data: Array<{ day: string; visits: number }> })
 }
 
 export default function AdminPage() {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
   const [activeTab, setActiveTab] = useState("Analytics");
+
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
 
   const { data: stats, isLoading: statsLoading } = useGetAdminStats();
   const { data: traffic } = useGetTrafficSources();

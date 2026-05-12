@@ -185,7 +185,6 @@ export default function HomePage() {
           <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
           <a href="#" className="hover:text-foreground transition-colors">About</a>
           <a href="#" className="hover:text-foreground transition-colors">Contact</a>
-          <a href="/admin" className="hover:text-foreground transition-colors">Admin</a>
         </div>
         <p className="mt-3 text-xs">© 2024 FilmDhundo — India ka OTT Guide</p>
       </footer>

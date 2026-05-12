@@ -81,9 +81,6 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
               Premium
             </Button>
           </Link>
-          <Link href="/admin" data-testid="link-admin">
-            <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">Admin</Button>
-          </Link>
         </nav>
 
         {/* Mobile right-side icons */}
@@ -219,9 +216,6 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
               </Button>
             </Link>
           </div>
-          <Link href="/admin" onClick={() => setMenuOpen(false)}>
-            <Button variant="ghost" size="sm" className="text-muted-foreground text-xs w-full">Admin Panel</Button>
-          </Link>
         </div>
       )}
     </header>
