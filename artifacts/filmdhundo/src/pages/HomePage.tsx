@@ -109,19 +109,28 @@ export default function HomePage() {
       <Navbar onMobileSearchChange={setMobileSearchOpen} />
 
       <div className="max-w-screen-xl mx-auto px-4 py-4">
-        <div className="flex items-center gap-6 py-3 mb-4 text-sm text-muted-foreground border-b border-border">
-          <div className="flex items-center gap-1.5">
-            <span className="text-primary font-bold text-base">10,000+</span>
-            <span>Movies Indexed</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-primary font-bold text-base">6</span>
-            <span>OTT Platforms</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-primary font-bold text-base">847</span>
-            <span>SEO Pages</span>
-          </div>
+        <div className="flex items-center gap-4 py-3 mb-4 text-sm text-muted-foreground border-b border-border flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+            Trending today
+          </span>
+          <span className="text-border">·</span>
+          <span>Updated daily</span>
+          <span className="text-border">·</span>
+          <span>
+            <span className="text-primary font-semibold">6</span> OTT platforms
+          </span>
+          {trendingData?.total_results ? (
+            <>
+              <span className="text-border">·</span>
+              <span>
+                <span className="text-primary font-semibold">
+                  {trendingData.total_results.toLocaleString("en-IN")}
+                </span>{" "}
+                movies
+              </span>
+            </>
+          ) : null}
         </div>
 
         <div className={`flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide ${mobileSearchOpen ? "hidden sm:flex" : "flex"}`}>
