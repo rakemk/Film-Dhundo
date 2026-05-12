@@ -57,13 +57,55 @@ export default function MovieDetailPage() {
   });
 
   useEffect(() => {
-    if (movie) {
-      const stored = JSON.parse(localStorage.getItem("filmdhundo_watchlist") || "[]");
-      setInWatchlist(stored.includes(movie.id));
-      const platforms = movie.ott_platforms ?? (movie.ott_platform && movie.ott_platform !== "unknown" ? [movie.ott_platform] : []);
-      const platformName = platforms.length ? (OTT_CONFIG[platforms[0]]?.name ?? platforms[0]) : "OTT";
-      document.title = `${movie.title} (${movie.release_date?.slice(0, 4)}) — ${platformName} pe Dekho | FilmDhundo`;
-    }
+    if (!movie) return;
+
+    const stored = JSON.parse(localStorage.getItem("filmdhundo_watchlist") || "[]");
+    setInWatchlist(stored.includes(movie.id));
+
+    const platforms = movie.ott_platforms ?? (movie.ott_platform && movie.ott_platform !== "unknown" ? [movie.ott_platform] : []);
+    const ottName = platforms.length ? (OTT_CONFIG[platforms[0]]?.name ?? platforms[0]) : "OTT";
+    const year = movie.release_date?.slice(0, 4) ?? "";
+    const pageUrl = window.location.href;
+    const imageUrl = movie.backdrop_path
+      ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`
+      : movie.poster_path
+        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+        : "";
+
+    const title = `${movie.title} (${year}) — ${ottName} pe Dekho | FilmDhundo`;
+    const description = platforms.length
+      ? `${movie.title} ab ${ottName} pe available hai. ${movie.language} mein dekhein. Abhi subscribe karein.`
+      : `${movie.title} (${year}) — FilmDhundo pe dekhein kahan available hai. ${movie.language} mein dekhein.`;
+
+    document.title = title;
+
+    const setMeta = (selector: string, attr: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        const [attrName, attrVal] = attr.split("=");
+        el.setAttribute(attrName, attrVal);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    setMeta('meta[name="description"]', "name=description", description);
+    setMeta('meta[property="og:title"]', "property=og:title", title);
+    setMeta('meta[property="og:description"]', "property=og:description", description);
+    setMeta('meta[property="og:image"]', "property=og:image", imageUrl);
+    setMeta('meta[property="og:url"]', "property=og:url", pageUrl);
+    setMeta('meta[property="og:type"]', "property=og:type", "video.movie");
+    setMeta('meta[property="og:site_name"]', "property=og:site_name", "FilmDhundo");
+
+    return () => {
+      document.title = "FilmDhundo — India ka OTT Guide";
+      setMeta('meta[name="description"]', "name=description", "FilmDhundo — India ke sabse bade OTT platforms pe movies dhundein.");
+      ["og:title", "og:description", "og:image", "og:url"].forEach((prop) => {
+        const el = document.querySelector(`meta[property="${prop}"]`);
+        el?.setAttribute("content", "");
+      });
+    };
   }, [movie]);
 
   const handleWatchlist = () => {
