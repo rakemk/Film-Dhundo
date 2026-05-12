@@ -58,6 +58,7 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
   const { data: trendingData, isLoading } = useGetTrendingMovies(
@@ -105,7 +106,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Navbar onMobileSearchChange={setMobileSearchOpen} />
 
       <div className="max-w-screen-xl mx-auto px-4 py-4">
         <div className="flex items-center gap-6 py-3 mb-4 text-sm text-muted-foreground border-b border-border">
@@ -123,7 +124,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
+        <div className={`flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide ${mobileSearchOpen ? "hidden sm:flex" : "flex"}`}>
           {PLATFORM_TABS.map((tab) => (
             <button
               key={tab.value}
