@@ -8,11 +8,14 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_API_KEY = process.env["TMDB_API_KEY"];
 const YOUTUBE_API_KEY = process.env["YOUTUBE_API_KEY"];
 
-const OTT_PLATFORMS = ["prime", "netflix", "hotstar", "zee5", "sony", "mx"];
-
-function assignOttPlatform(movieId: number): string {
-  return OTT_PLATFORMS[movieId % OTT_PLATFORMS.length];
-}
+const PROVIDER_MAP: Record<number, string> = {
+  8: "netflix",
+  119: "prime",
+  122: "hotstar",
+  232: "zee5",
+  237: "sony",
+  11: "mx",
+};
 
 function makeSlug(title: string, releaseDate: string): string {
   const year = releaseDate?.slice(0, 4) || "unknown";
@@ -55,6 +58,37 @@ async function tmdbGet<T>(path: string, params: Record<string, string | number> 
   return response.data as T;
 }
 
+interface TmdbWatchProviders {
+  results: {
+    IN?: {
+      flatrate?: Array<{ provider_id: number; provider_name: string }>;
+    };
+  };
+}
+
+async function getWatchProviders(id: number): Promise<string[]> {
+  if (!TMDB_API_KEY) return [];
+  const cacheKey = `wp:${id}`;
+  const cached = cache.get<string[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await axios.get<TmdbWatchProviders>(
+      `${TMDB_BASE}/movie/${id}/watch/providers`,
+      { params: { api_key: TMDB_API_KEY, region: "IN" } }
+    );
+    const flatrate = response.data?.results?.IN?.flatrate || [];
+    const platforms = flatrate
+      .map((p) => PROVIDER_MAP[p.provider_id])
+      .filter((p): p is string => !!p);
+    cache.set(cacheKey, platforms);
+    return platforms;
+  } catch {
+    cache.set(cacheKey, []);
+    return [];
+  }
+}
+
 interface TmdbMovie {
   id: number;
   title: string;
@@ -72,7 +106,7 @@ interface TmdbListResponse {
   page: number;
 }
 
-export function formatMovie(movie: TmdbMovie) {
+function formatMovieBase(movie: TmdbMovie) {
   return {
     id: movie.id,
     title: movie.title,
@@ -80,21 +114,30 @@ export function formatMovie(movie: TmdbMovie) {
     backdrop_path: movie.backdrop_path,
     vote_average: Math.round(movie.vote_average * 10) / 10,
     release_date: movie.release_date || "",
-    ott_platform: assignOttPlatform(movie.id),
     slug: makeSlug(movie.title, movie.release_date),
     language: getLanguageLabel(movie.original_language),
     overview: movie.overview,
   };
 }
 
+async function enrichWithProviders(movie: TmdbMovie) {
+  const platforms = await getWatchProviders(movie.id);
+  return {
+    ...formatMovieBase(movie),
+    ott_platform: platforms[0] ?? "unknown",
+    ott_platforms: platforms,
+  };
+}
+
 export async function getTrending(page = 1, platform?: string) {
   try {
     const data = await tmdbGet<TmdbListResponse>("/trending/movie/week", { page });
-    let movies = data.results.map(formatMovie);
-    if (platform && platform !== "all") {
-      movies = movies.filter((m) => m.ott_platform === platform);
-    }
-    return { movies, total_pages: data.total_pages, page: data.page };
+    const movies = await Promise.all(data.results.map(enrichWithProviders));
+    const filtered =
+      platform && platform !== "all" && platform !== "new" && platform !== "marathi" && platform !== "hindi"
+        ? movies.filter((m) => m.ott_platforms.includes(platform))
+        : movies;
+    return { movies: filtered, total_pages: data.total_pages, page: data.page };
   } catch (err) {
     logger.error({ err }, "TMDB trending fetch failed");
     return getMockMovies(page);
@@ -104,7 +147,7 @@ export async function getTrending(page = 1, platform?: string) {
 export async function searchMovies(query: string, page = 1) {
   try {
     const data = await tmdbGet<TmdbListResponse>("/search/movie", { query, page });
-    const movies = data.results.map(formatMovie);
+    const movies = await Promise.all(data.results.map(enrichWithProviders));
     return { movies, total_pages: data.total_pages, page: data.page };
   } catch (err) {
     logger.error({ err }, "TMDB search failed");
@@ -122,7 +165,7 @@ export async function getNewReleases() {
       "release_date.lte": today.toISOString().slice(0, 10),
       with_original_language: "hi",
     });
-    const movies = data.results.map(formatMovie);
+    const movies = await Promise.all(data.results.map(enrichWithProviders));
     return { movies, total_pages: data.total_pages, page: 1 };
   } catch (err) {
     logger.error({ err }, "TMDB new releases failed");
@@ -145,14 +188,14 @@ interface TmdbMovieDetail extends TmdbMovie {
 
 export async function getMovieDetail(id: number) {
   try {
-    const data = await tmdbGet<TmdbMovieDetail>(`/movie/${id}`, {
-      append_to_response: "credits,videos",
-    });
+    const [data, platforms] = await Promise.all([
+      tmdbGet<TmdbMovieDetail>(`/movie/${id}`, { append_to_response: "credits,videos" }),
+      getWatchProviders(id),
+    ]);
 
     const trailer = data.videos?.results.find(
       (v) => v.type === "Trailer" && v.site === "YouTube"
     );
-
     const director = data.credits?.crew.find((c) => c.job === "Director");
     const cast = (data.credits?.cast || []).slice(0, 8).map((c) => ({
       id: c.id,
@@ -193,7 +236,8 @@ export async function getMovieDetail(id: number) {
       vote_count: data.vote_count,
       release_date: data.release_date || "",
       runtime: data.runtime || null,
-      ott_platform: assignOttPlatform(data.id),
+      ott_platform: platforms[0] ?? "unknown",
+      ott_platforms: platforms,
       slug: makeSlug(data.title, data.release_date),
       language: getLanguageLabel(data.original_language),
       overview: data.overview || null,
@@ -211,7 +255,8 @@ export async function getMovieDetail(id: number) {
 export async function getSimilarMovies(id: number) {
   try {
     const data = await tmdbGet<TmdbListResponse>(`/movie/${id}/similar`);
-    return data.results.slice(0, 12).map(formatMovie);
+    const movies = await Promise.all(data.results.slice(0, 12).map(enrichWithProviders));
+    return movies;
   } catch (err) {
     logger.error({ err }, "TMDB similar movies failed");
     return [];
@@ -250,7 +295,8 @@ function getMockMovieDetail(id: number) {
     vote_count: 10000,
     release_date: "2023-06-15",
     runtime: 148,
-    ott_platform: assignOttPlatform(id),
+    ott_platform: "prime",
+    ott_platforms: ["prime"],
     slug: makeSlug(detail.title, "2023-06-15"),
     language: getLanguageLabel(detail.lang),
     overview: detail.overview,
@@ -266,18 +312,18 @@ function getMockMovieDetail(id: number) {
 
 function getMockMovies(page: number) {
   const MOCK_TITLES = [
-    { title: "Pathaan", lang: "hi" },
-    { title: "RRR", lang: "te" },
-    { title: "KGF Chapter 2", lang: "kn" },
-    { title: "Brahmastra", lang: "hi" },
-    { title: "Drishyam 2", lang: "hi" },
-    { title: "Animal", lang: "hi" },
-    { title: "Jawan", lang: "hi" },
-    { title: "Gadar 2", lang: "hi" },
-    { title: "Tu Jhoothi Main Makkaar", lang: "hi" },
-    { title: "OMG 2", lang: "hi" },
-    { title: "Dunki", lang: "hi" },
-    { title: "Tiger 3", lang: "hi" },
+    { title: "Pathaan", lang: "hi", platforms: ["prime"] },
+    { title: "RRR", lang: "te", platforms: ["netflix", "prime"] },
+    { title: "KGF Chapter 2", lang: "kn", platforms: ["prime"] },
+    { title: "Brahmastra", lang: "hi", platforms: ["hotstar"] },
+    { title: "Drishyam 2", lang: "hi", platforms: ["prime"] },
+    { title: "Animal", lang: "hi", platforms: ["netflix"] },
+    { title: "Jawan", lang: "hi", platforms: ["netflix", "prime"] },
+    { title: "Gadar 2", lang: "hi", platforms: ["zee5"] },
+    { title: "Tu Jhoothi Main Makkaar", lang: "hi", platforms: ["netflix"] },
+    { title: "OMG 2", lang: "hi", platforms: ["hotstar"] },
+    { title: "Dunki", lang: "hi", platforms: ["netflix"] },
+    { title: "Tiger 3", lang: "hi", platforms: ["hotstar", "prime"] },
   ];
 
   const movies = MOCK_TITLES.map((m, i) => {
@@ -289,7 +335,8 @@ function getMockMovies(page: number) {
       backdrop_path: null,
       vote_average: 7 + Math.round(Math.random() * 20) / 10,
       release_date: "2023-01-01",
-      ott_platform: assignOttPlatform(id),
+      ott_platform: m.platforms[0] ?? "unknown",
+      ott_platforms: m.platforms,
       slug: makeSlug(m.title, "2023-01-01"),
       language: getLanguageLabel(m.lang),
       overview: `${m.title} ek blockbuster film hai.`,

@@ -19,6 +19,7 @@ export interface Movie {
   vote_average: number;
   release_date: string;
   ott_platform: string;
+  ott_platforms?: string[];
   slug: string;
   language: string;
   /** @nullable */
@@ -53,6 +54,7 @@ export interface MovieDetail {
   /** @nullable */
   runtime?: number | null;
   ott_platform: string;
+  ott_platforms?: string[];
   slug: string;
   language: string;
   /** @nullable */

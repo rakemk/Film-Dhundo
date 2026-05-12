@@ -20,6 +20,7 @@ export interface MovieDetail {
   /** @nullable */
   runtime?: number | null;
   ott_platform: string;
+  ott_platforms?: string[];
   slug: string;
   language: string;
   /** @nullable */

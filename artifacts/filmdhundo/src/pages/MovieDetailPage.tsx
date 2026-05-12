@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { Star, Clock, Calendar, Share2, Bookmark, BookmarkCheck, ChevronLeft } from "lucide-react";
+import { Star, Clock, Calendar, Bookmark, BookmarkCheck, ChevronLeft } from "lucide-react";
 import { FaWhatsapp, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import {
@@ -18,10 +18,12 @@ import { OTT_CONFIG, getTmdbImage } from "@/lib/ott";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-function FAQSection({ title, ottName, language }: { title: string; ottName: string; language: string }) {
+function FAQSection({ title, ottNames, language }: { title: string; ottNames: string[]; language: string }) {
+  const primaryOtt = ottNames[0] || "OTT platforms";
+  const allOtts = ottNames.length > 1 ? ottNames.join(", ") : primaryOtt;
   const faqs = [
-    { q: `${title} kahan dekhein?`, a: `${title} ${ottName} pe available hai.` },
-    { q: `${title} free mein kaise dekhein?`, a: `${ottName} ka free trial lo.` },
+    { q: `${title} kahan dekhein?`, a: ottNames.length ? `${title} ${allOtts} pe available hai.` : `${title} abhi kisi Indian OTT pe available nahi hai.` },
+    { q: `${title} free mein kaise dekhein?`, a: ottNames.length ? `${primaryOtt} ka free trial lo.` : "Abhi OTT date announce nahi hui hai." },
     { q: `${title} Hindi mein hai?`, a: `Haan, ${title} ${language} mein available hai.` },
   ];
   return (
@@ -58,7 +60,9 @@ export default function MovieDetailPage() {
     if (movie) {
       const stored = JSON.parse(localStorage.getItem("filmdhundo_watchlist") || "[]");
       setInWatchlist(stored.includes(movie.id));
-      document.title = `${movie.title} (${movie.release_date?.slice(0, 4)}) — ${OTT_CONFIG[movie.ott_platform]?.name || movie.ott_platform} pe Dekho | FilmDhundo`;
+      const platforms = movie.ott_platforms ?? (movie.ott_platform && movie.ott_platform !== "unknown" ? [movie.ott_platform] : []);
+      const platformName = platforms.length ? (OTT_CONFIG[platforms[0]]?.name ?? platforms[0]) : "OTT";
+      document.title = `${movie.title} (${movie.release_date?.slice(0, 4)}) — ${platformName} pe Dekho | FilmDhundo`;
     }
   }, [movie]);
 
@@ -90,9 +94,15 @@ export default function MovieDetailPage() {
   };
 
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-  const shareText = movie ? `${movie.title} ${OTT_CONFIG[movie.ott_platform]?.name || movie.ott_platform} pe available hai! Yahan dekho: ${shareUrl}` : "";
-
-  const ott = movie ? (OTT_CONFIG[movie.ott_platform] || { name: movie.ott_platform, color: "#666", affiliateUrl: "#", buttonText: "Dekho" }) : null;
+  const activePlatforms = movie
+    ? (movie.ott_platforms ?? (movie.ott_platform && movie.ott_platform !== "unknown" ? [movie.ott_platform] : []))
+    : [];
+  const primaryOttName = activePlatforms.length ? (OTT_CONFIG[activePlatforms[0]]?.name ?? activePlatforms[0]) : null;
+  const shareText = movie
+    ? primaryOttName
+      ? `${movie.title} ${primaryOttName} pe available hai! Yahan dekho: ${shareUrl}`
+      : `${movie.title} dekhein FilmDhundo pe! Yahan dekho: ${shareUrl}`
+    : "";
 
   if (isLoading) {
     return (
@@ -216,18 +226,29 @@ export default function MovieDetailPage() {
 
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">Kahan Dekhein</h2>
-              <div className="flex flex-wrap gap-3">
-                {ott && (
-                  <a
-                    href={ott.affiliateUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: ott.color }}
-                    data-testid="button-ott-watch"
-                  >
-                    {ott.buttonText}
-                  </a>
+              <div className="flex flex-wrap gap-3 items-center">
+                {activePlatforms.length > 0 ? (
+                  activePlatforms.map((platformKey) => {
+                    const cfg = OTT_CONFIG[platformKey];
+                    if (!cfg) return null;
+                    return (
+                      <a
+                        key={platformKey}
+                        href={cfg.affiliateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: cfg.color }}
+                        data-testid={`button-ott-${platformKey}`}
+                      >
+                        {cfg.buttonText}
+                      </a>
+                    );
+                  })
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground bg-muted">
+                    OTT Date Aani Hai
+                  </span>
                 )}
                 <Button
                   variant="outline"
@@ -339,7 +360,7 @@ export default function MovieDetailPage() {
           </div>
         )}
 
-        <FAQSection title={movie.title} ottName={ott?.name || movie.ott_platform} language={movie.language} />
+        <FAQSection title={movie.title} ottNames={activePlatforms.map((k) => OTT_CONFIG[k]?.name ?? k)} language={movie.language} />
       </div>
     </div>
   );

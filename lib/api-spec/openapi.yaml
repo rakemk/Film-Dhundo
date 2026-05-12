@@ -312,6 +312,10 @@ components:
           type: string
         ott_platform:
           type: string
+        ott_platforms:
+          type: array
+          items:
+            type: string
         slug:
           type: string
         language:
@@ -367,6 +371,10 @@ components:
           type: ["integer", "null"]
         ott_platform:
           type: string
+        ott_platforms:
+          type: array
+          items:
+            type: string
         slug:
           type: string
         language:

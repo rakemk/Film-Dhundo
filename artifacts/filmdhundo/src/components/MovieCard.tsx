@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star } from "lucide-react";
+import { Star, Clock } from "lucide-react";
 import { OTT_CONFIG, getTmdbImage } from "@/lib/ott";
 import type { Movie } from "@workspace/api-client-react";
 
@@ -9,7 +9,9 @@ interface MovieCardProps {
 }
 
 export function MovieCard({ movie, index = 0 }: MovieCardProps) {
-  const ott = OTT_CONFIG[movie.ott_platform] || { name: movie.ott_platform, color: "#666" };
+  const primaryPlatform = movie.ott_platforms?.[0] ?? movie.ott_platform;
+  const hasOtt = primaryPlatform && primaryPlatform !== "unknown";
+  const ott = hasOtt ? OTT_CONFIG[primaryPlatform] : null;
   const year = movie.release_date?.slice(0, 4) || "";
   const posterUrl = getTmdbImage.posterThumb(movie.poster_path);
   const isEager = index < 6;
@@ -32,13 +34,29 @@ export function MovieCard({ movie, index = 0 }: MovieCardProps) {
               {movie.title}
             </div>
           )}
-          <span
-            className="absolute top-2 right-2 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: ott.color }}
-            data-testid={`badge-platform-${movie.id}`}
-          >
-            {ott.name.split(" ")[0]}
-          </span>
+
+          {hasOtt && ott ? (
+            <span
+              className="absolute top-2 right-2 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: ott.color }}
+              data-testid={`badge-platform-${movie.id}`}
+            >
+              {ott.name.split(" ")[0]}
+            </span>
+          ) : (
+            <span
+              className="absolute top-2 right-2 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-500"
+              data-testid={`badge-platform-${movie.id}`}
+            >
+              Aani Hai
+            </span>
+          )}
+
+          {movie.ott_platforms && movie.ott_platforms.length > 1 && (
+            <span className="absolute bottom-2 right-2 text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded-full">
+              +{movie.ott_platforms.length - 1}
+            </span>
+          )}
         </div>
         <div className="p-2">
           <p className="text-xs font-medium text-foreground line-clamp-2 mb-1" data-testid={`text-title-${movie.id}`}>
