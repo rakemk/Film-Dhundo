@@ -120,12 +120,12 @@ export default function HomePage() {
           <span>
             <span className="text-primary font-semibold">6</span> OTT platforms
           </span>
-          {trendingData?.total_results ? (
+          {trendingData?.total_pages ? (
             <>
               <span className="text-border">·</span>
               <span>
                 <span className="text-primary font-semibold">
-                  {trendingData.total_results.toLocaleString("en-IN")}
+                  {(trendingData.total_pages * 20).toLocaleString("en-IN")}+
                 </span>{" "}
                 movies
               </span>
@@ -191,11 +191,11 @@ export default function HomePage() {
 
       <footer className="mt-12 border-t border-border py-6 text-center text-sm text-muted-foreground">
         <div className="flex justify-center gap-6">
-          <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-foreground transition-colors">About</a>
-          <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+          <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+          <a href="/about" className="hover:text-foreground transition-colors">About</a>
+          <a href="/contact" className="hover:text-foreground transition-colors">Contact</a>
         </div>
-        <p className="mt-3 text-xs">© 2024 FilmDhundo — India ka OTT Guide</p>
+        <p className="mt-3 text-xs">© 2025 FilmDhundo — India ka OTT Guide</p>
       </footer>
     </div>
   );

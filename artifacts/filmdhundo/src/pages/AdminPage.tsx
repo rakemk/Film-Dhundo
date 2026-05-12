@@ -5,6 +5,10 @@ import {
   useGetTrafficSources,
   useGetWeeklyTraffic,
   useGetTopSeoPages,
+  getGetAdminStatsQueryKey,
+  getGetTrafficSourcesQueryKey,
+  getGetWeeklyTrafficQueryKey,
+  getGetTopSeoPagesQueryKey,
 } from "@workspace/api-client-react";
 import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,10 +135,10 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
   const [activeTab, setActiveTab] = useState("Analytics");
 
-  const { data: stats, isLoading: statsLoading } = useGetAdminStats({ query: { enabled: authed } });
-  const { data: traffic } = useGetTrafficSources({ query: { enabled: authed } });
-  const { data: weekly } = useGetWeeklyTraffic({ query: { enabled: authed } });
-  const { data: seoPages } = useGetTopSeoPages({ query: { enabled: authed } });
+  const { data: stats, isLoading: statsLoading } = useGetAdminStats({ query: { enabled: authed, queryKey: getGetAdminStatsQueryKey() } });
+  const { data: traffic } = useGetTrafficSources({ query: { enabled: authed, queryKey: getGetTrafficSourcesQueryKey() } });
+  const { data: weekly } = useGetWeeklyTraffic({ query: { enabled: authed, queryKey: getGetWeeklyTrafficQueryKey() } });
+  const { data: seoPages } = useGetTopSeoPages({ query: { enabled: authed, queryKey: getGetTopSeoPagesQueryKey() } });
 
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
 

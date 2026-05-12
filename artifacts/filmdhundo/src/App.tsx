@@ -9,6 +9,9 @@ import MovieDetailPage from "@/pages/MovieDetailPage";
 import WatchlistPage from "@/pages/WatchlistPage";
 import PremiumPage from "@/pages/PremiumPage";
 import AdminPage from "@/pages/AdminPage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import AboutPage from "@/pages/AboutPage";
+import ContactPage from "@/pages/ContactPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +31,9 @@ function Router() {
       <Route path="/watchlist" component={WatchlistPage} />
       <Route path="/premium" component={PremiumPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
     </Switch>
   );
