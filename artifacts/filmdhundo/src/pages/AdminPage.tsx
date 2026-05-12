@@ -131,12 +131,12 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
   const [activeTab, setActiveTab] = useState("Analytics");
 
-  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
+  const { data: stats, isLoading: statsLoading } = useGetAdminStats({ query: { enabled: authed } });
+  const { data: traffic } = useGetTrafficSources({ query: { enabled: authed } });
+  const { data: weekly } = useGetWeeklyTraffic({ query: { enabled: authed } });
+  const { data: seoPages } = useGetTopSeoPages({ query: { enabled: authed } });
 
-  const { data: stats, isLoading: statsLoading } = useGetAdminStats();
-  const { data: traffic } = useGetTrafficSources();
-  const { data: weekly } = useGetWeeklyTraffic();
-  const { data: seoPages } = useGetTopSeoPages();
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
 
   return (
     <div className="min-h-screen bg-background">
