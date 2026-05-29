@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { watchlistTable, usersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 const router = Router();
 
 // Simple header-based admin auth middleware. Set ADMIN_PASSWORD in the server env.
-function requireAdmin(req, res, next) {
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const expected = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "";
   const provided = String(req.headers["x-admin-password"] || "");
   if (!expected || !provided || provided !== expected) {
