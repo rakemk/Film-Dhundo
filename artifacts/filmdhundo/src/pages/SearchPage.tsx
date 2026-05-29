@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
+import { Link } from "wouter";
 import { useSearchMovies, getSearchMoviesQueryKey } from "@workspace/api-client-react";
 import { Navbar } from "@/components/Navbar";
 import { MovieCard } from "@/components/MovieCard";
@@ -68,7 +69,7 @@ export default function SearchPage() {
           {showSuggestions && query.length >= 2 && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-20">
               {suggestions.map((movie) => (
-                <a
+                <Link
                   key={movie.id}
                   href={`/movies/${movie.id}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
@@ -85,7 +86,7 @@ export default function SearchPage() {
                     <p className="text-sm font-medium text-foreground">{movie.title}</p>
                     <p className="text-xs text-muted-foreground">{movie.release_date?.slice(0, 4)} · {movie.language}</p>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           )}

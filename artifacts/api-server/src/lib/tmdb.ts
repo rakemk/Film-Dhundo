@@ -173,10 +173,34 @@ export async function getNewReleases() {
   }
 }
 
+export async function getUpcoming() {
+  const cacheKey = 'upcoming:in';
+  const cached = cache.get<{ movies: any[]; page: number }>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const data = await tmdbGet<TmdbListResponse>(`/movie/upcoming`, { region: 'IN', language: 'hi-IN' });
+    const movies = await Promise.all(data.results.slice(0, 10).map(async (m) => {
+      const base = await enrichWithProviders(m);
+      const releaseDate = m.release_date ? new Date(m.release_date) : null;
+      const days_until_release = releaseDate ? Math.ceil((releaseDate.getTime() - Date.now()) / 86400000) : null;
+      return { ...base, days_until_release };
+    }));
+    const result = { movies, page: data.page };
+    cache.set(cacheKey, result, 6 * 3600); // cache 6 hours
+    return result;
+  } catch (err) {
+    logger.error({ err }, 'TMDB upcoming fetch failed');
+    return { movies: [], page: 1 };
+  }
+}
+
 interface TmdbMovieDetail extends TmdbMovie {
   runtime: number | null;
   genres: Array<{ id: number; name: string }>;
   vote_count: number;
+  tagline?: string | null;
+  keywords?: { keywords: Array<{ id: number; name: string }> };
   credits?: {
     cast: Array<{ id: number; name: string; character: string; profile_path: string | null }>;
     crew: Array<{ id: number; name: string; job: string }>;
@@ -184,12 +208,18 @@ interface TmdbMovieDetail extends TmdbMovie {
   videos?: {
     results: Array<{ type: string; site: string; key: string }>;
   };
+  release_dates?: {
+    results: Array<{
+      iso_3166_1: string;
+      release_dates: Array<{ certification?: string; release_date?: string }>;
+    }>;
+  };
 }
 
 export async function getMovieDetail(id: number) {
   try {
     const [data, platforms] = await Promise.all([
-      tmdbGet<TmdbMovieDetail>(`/movie/${id}`, { append_to_response: "credits,videos" }),
+      tmdbGet<TmdbMovieDetail>(`/movie/${id}`, { append_to_response: "credits,videos,release_dates,keywords" }),
       getWatchProviders(id),
     ]);
 
@@ -245,6 +275,22 @@ export async function getMovieDetail(id: number) {
       cast,
       trailer_url: trailerUrl,
       director: director?.name || null,
+      tagline: data.tagline || null,
+      keywords: (data.keywords?.keywords || []).map((k) => k.name),
+      age_rating: (() => {
+        try {
+          const rd = data.release_dates?.results || [];
+          const inEntry = rd.find((r) => r.iso_3166_1 === "IN");
+          const cert = inEntry?.release_dates?.[0]?.certification || "";
+          const normalized = (cert || "").toUpperCase().replace(/\s+/g, "").replace(/\//g, "");
+          if (normalized === "G" || normalized === "U") return "U";
+          if (normalized === "PG" || normalized === "PG-13" || normalized === "UA" || normalized === "UA") return "UA";
+          if (normalized === "R" || normalized === "NC-17" || normalized === "A") return "A";
+          return "UA";
+        } catch {
+          return "UA";
+        }
+      })(),
     };
   } catch (err) {
     logger.error({ err }, "TMDB movie detail failed, using mock");

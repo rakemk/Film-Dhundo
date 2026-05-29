@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { OTT_CONFIG, getTmdbImage } from "@/lib/ott";
 import { useState, useEffect } from "react";
+import SeoHead from "@/components/SeoHead";
+import { useWatchCount } from "@/hooks/useWatchCount";
 import { useToast } from "@/hooks/use-toast";
 
 function FAQSection({ title, ottNames, language }: { title: string; ottNames: string[]; language: string }) {
@@ -41,12 +43,33 @@ function FAQSection({ title, ottNames, language }: { title: string; ottNames: st
   );
 }
 
+function getStoredWatchlistIds(): number[] {
+  try {
+    const raw = localStorage.getItem("filmdhundo_watchlist");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is number => typeof id === "number");
+  } catch {
+    return [];
+  }
+}
+
 export default function MovieDetailPage() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id || "0", 10);
   const { toast } = useToast();
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [reaction, setReaction] = useState<string | null>(null);
   const addToWatchlist = useAddToWatchlist();
+  const { increment, shouldShowAffiliate } = useWatchCount();
+  const [affiliateDismissed, setAffiliateDismissed] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && sessionStorage.getItem('affiliateDismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const { data: movie, isLoading } = useGetMovieById(id, {
     query: { enabled: !!id, queryKey: getGetMovieByIdQueryKey(id) },
@@ -58,9 +81,16 @@ export default function MovieDetailPage() {
 
   useEffect(() => {
     if (!movie) return;
+    const stored = localStorage.getItem(`reaction_${movie.id}`);
+    if (stored) setReaction(stored);
+  }, [movie]);
 
-    const stored = JSON.parse(localStorage.getItem("filmdhundo_watchlist") || "[]");
+  useEffect(() => {
+    if (!movie) return;
+
+    const stored = getStoredWatchlistIds();
     setInWatchlist(stored.includes(movie.id));
+
 
     const platforms = movie.ott_platforms ?? (movie.ott_platform && movie.ott_platform !== "unknown" ? [movie.ott_platform] : []);
     const ottName = platforms.length ? (OTT_CONFIG[platforms[0]]?.name ?? platforms[0]) : "OTT";
@@ -77,40 +107,19 @@ export default function MovieDetailPage() {
       ? `${movie.title} ab ${ottName} pe available hai. ${movie.language} mein dekhein. Abhi subscribe karein.`
       : `${movie.title} (${year}) — FilmDhundo pe dekhein kahan available hai. ${movie.language} mein dekhein.`;
 
-    document.title = title;
+    // Use SeoHead component (rendered below) to update head tags and JSON-LD
 
-    const setMeta = (selector: string, attr: string, content: string) => {
-      let el = document.querySelector<HTMLMetaElement>(selector);
-      if (!el) {
-        el = document.createElement("meta");
-        const [attrName, attrVal] = attr.split("=");
-        el.setAttribute(attrName, attrVal);
-        document.head.appendChild(el);
-      }
-      el.setAttribute("content", content);
-    };
-
-    setMeta('meta[name="description"]', "name=description", description);
-    setMeta('meta[property="og:title"]', "property=og:title", title);
-    setMeta('meta[property="og:description"]', "property=og:description", description);
-    setMeta('meta[property="og:image"]', "property=og:image", imageUrl);
-    setMeta('meta[property="og:url"]', "property=og:url", pageUrl);
-    setMeta('meta[property="og:type"]', "property=og:type", "video.movie");
-    setMeta('meta[property="og:site_name"]', "property=og:site_name", "FilmDhundo");
+    // increment watch count when movie loads
+    try { increment(); } catch {}
 
     return () => {
-      document.title = "FilmDhundo — India ka OTT Guide";
-      setMeta('meta[name="description"]', "name=description", "FilmDhundo — India ke sabse bade OTT platforms pe movies dhundein.");
-      ["og:title", "og:description", "og:image", "og:url"].forEach((prop) => {
-        const el = document.querySelector(`meta[property="${prop}"]`);
-        el?.setAttribute("content", "");
-      });
+      // nothing special to cleanup here; SeoHead handles head cleanup on unmount
     };
   }, [movie]);
 
   const handleWatchlist = () => {
     if (!movie) return;
-    const stored: number[] = JSON.parse(localStorage.getItem("filmdhundo_watchlist") || "[]");
+    const stored = getStoredWatchlistIds();
     if (inWatchlist) {
       const updated = stored.filter((id) => id !== movie.id);
       localStorage.setItem("filmdhundo_watchlist", JSON.stringify(updated));
@@ -181,6 +190,16 @@ export default function MovieDetailPage() {
   const year = movie.release_date?.slice(0, 4) || "";
   const posterUrl = getTmdbImage.posterFull(movie.poster_path);
   const backdropUrl = getTmdbImage.backdrop(movie.backdrop_path);
+  const safeCast = (movie.cast ?? []).filter((member) => !!member);
+  const safeSimilar = (similar ?? []).filter((item) => !!item && typeof item.id === "number");
+
+  const handleReaction = (type: 'liked' | 'disliked') => {
+    if (!movie || reaction) return; // cannot change after clicking
+    try {
+      localStorage.setItem(`reaction_${movie.id}`, type);
+      setReaction(type);
+    } catch {}
+  };
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -198,12 +217,12 @@ export default function MovieDetailPage() {
       worstRating: "1",
     },
     director: movie.director ? { "@type": "Person", name: movie.director } : undefined,
-    actor: movie.cast?.map((c) => ({ "@type": "Person", name: c.name })),
+    actor: safeCast.map((c) => ({ "@type": "Person", name: c.name })),
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <SeoHead title={`${movie.title} (${year}) — ${primaryOttName ?? 'OTT'} pe Dekho | FilmDhundo`} description={movie.overview || ''} image={backdropUrl || posterUrl} url={typeof window !== 'undefined' ? window.location.href : ''} type="video.movie" jsonLd={jsonLd} />
       <Navbar />
 
       {backdropUrl && (
@@ -250,7 +269,11 @@ export default function MovieDetailPage() {
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-4">
               {year && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{year}</span>}
               {movie.runtime && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{movie.runtime} min</span>}
-              <span className="flex items-center gap-1 text-yellow-500"><Star className="w-3.5 h-3.5 fill-current" /><span className="text-foreground font-medium">{movie.vote_average}</span>/10</span>
+              <span className="flex items-center gap-1 text-yellow-500">
+                <span className="text-sm font-medium" style={{ color: '#F5C518' }}>IMDb</span>
+                <Star className="w-3.5 h-3.5 fill-current" />
+                <span className="text-foreground font-medium">{movie.vote_average}</span>/10
+              </span>
               <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-xs">{movie.language}</span>
             </div>
 
@@ -265,6 +288,52 @@ export default function MovieDetailPage() {
             {movie.overview && (
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-2xl">{movie.overview}</p>
             )}
+
+            {/* Trivia section: Kya Aap Jaante The? - below overview, above cast */}
+            {(() => {
+              const tagline = (movie as any).tagline || null;
+              const firstKeyword = (movie as any).keywords?.[0] || null;
+              const firstSentence = movie.overview
+                ? movie.overview.split(/(?<=[.?!])\s+/)[0]
+                : null;
+              if (!tagline && !firstKeyword && !firstSentence) return null;
+              return (
+                <section className="mt-4">
+                  <div className="rounded-lg border border-border bg-[#f5f5f5] p-4 my-4">
+                    <h3 className="text-base font-semibold text-foreground mb-3">Kya Aap Jaante The?</h3>
+                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                      {tagline && <li>{tagline}</li>}
+                      {firstKeyword && <li>{firstKeyword}</li>}
+                      {firstSentence && <li>{firstSentence}</li>}
+                    </ol>
+                  </div>
+                </section>
+              );
+            })()}
+
+            {/* Reaction buttons (below trivia, above cast) */}
+            <div className="mt-2 mb-4">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className={`flex-1 ${reaction === 'liked' ? 'border-[#E24B4A] text-[#E24B4A]' : ''}`}
+                  onClick={() => handleReaction('liked')}
+                  disabled={!!reaction}
+                >
+                  👍 Pasand Aaya
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`flex-1 ${reaction === 'disliked' ? 'border-[#1a1a1a] text-[#1a1a1a]' : ''}`}
+                  onClick={() => handleReaction('disliked')}
+                  disabled={!!reaction}
+                >
+                  👎 Pasand Nahi Aaya
+                </Button>
+              </div>
+              {reaction === 'liked' && <p className="text-sm mt-2" style={{ color: '#E24B4A' }}>Aapne pasand kiya!</p>}
+              {reaction === 'disliked' && <p className="text-sm mt-2" style={{ color: '#1a1a1a' }}>Feedback note ho gaya</p>}
+            </div>
 
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">Kahan Dekhein</h2>
@@ -302,6 +371,26 @@ export default function MovieDetailPage() {
                   {inWatchlist ? "Watchlist mein hai" : "Baad Mein Dekho"}
                 </Button>
               </div>
+              {/* Affiliate banner after watch buttons */}
+              {!affiliateDismissed && shouldShowAffiliate && (
+                <div
+                  className="mt-3"
+                  style={{ backgroundColor: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 8, padding: "12px 16px", marginTop: 12 }}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm" style={{ color: "#666666" }}>Aur dekhna hai? Prime ka 30 din free trial lo</p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => window.open('https://www.primevideo.com/?tag=freefilm-21', '_blank')}>Free Trial Lo</Button>
+                      <button
+                        className="text-sm text-muted-foreground"
+                        onClick={() => { sessionStorage.setItem('affiliateDismissed', 'true'); setAffiliateDismissed(true); }}
+                      >
+                        Nahi chahiye
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
@@ -361,23 +450,23 @@ export default function MovieDetailPage() {
           </div>
         )}
 
-        {movie.cast && movie.cast.length > 0 && (
+        {safeCast.length > 0 && (
           <div className="mt-8">
             <h2 className="text-base font-semibold text-foreground mb-3">Cast</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {movie.cast.map((member) => (
+              {safeCast.map((member) => (
                 <div key={member.id} className="shrink-0 w-20 text-center" data-testid={`card-cast-${member.id}`}>
                   <div className="w-16 h-16 mx-auto rounded-full overflow-hidden bg-muted border border-border mb-1">
                     {member.profile_path ? (
                       <img
                         src={getTmdbImage.profile(member.profile_path)}
-                        alt={member.name}
+                        alt={member.name || "Cast member"}
                         loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                        {member.name[0]}
+                        {member.name?.[0] ?? "?"}
                       </div>
                     )}
                   </div>
@@ -389,11 +478,11 @@ export default function MovieDetailPage() {
           </div>
         )}
 
-        {similar && similar.length > 0 && (
+        {safeSimilar.length > 0 && (
           <div className="mt-8">
             <h2 className="text-base font-semibold text-foreground mb-3">Isse Milti Julti Movies</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {similar.map((m, i) => (
+              {safeSimilar.map((m, i) => (
                 <div key={m.id} className="shrink-0 w-32">
                   <MovieCard movie={m} index={i} />
                 </div>

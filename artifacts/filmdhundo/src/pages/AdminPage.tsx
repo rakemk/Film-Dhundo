@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { TrendingUp, Users, FileText, Crown, BarChart2, Globe, Lock, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, Users, FileText, Crown, BarChart2, Globe, Lock, Eye, EyeOff, LogOut } from "lucide-react";
 import {
   useGetAdminStats,
   useGetTrafficSources,
@@ -15,8 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const ADMIN_PASSWORD = "yourpassword123";
+// Read admin password from env var; fallback to a secure default
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
 const SESSION_KEY = "filmdhundo_admin_auth";
+const SESSION_TIMEOUT_MS = 1800000; // 30 minutes
 
 function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const [value, setValue] = useState("");
@@ -27,7 +29,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value === ADMIN_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, "1");
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ timestamp: Date.now() }));
       onSuccess();
     } else {
       setError(true);
@@ -132,13 +134,67 @@ function WeeklyChart({ data }: { data: Array<{ day: string; visits: number }> })
 }
 
 export default function AdminPage() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === "1");
+  const [authed, setAuthed] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      if (!stored) return false;
+      const data = JSON.parse(stored);
+      const elapsed = Date.now() - data.timestamp;
+      if (elapsed > SESSION_TIMEOUT_MS) {
+        sessionStorage.removeItem(SESSION_KEY);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  });
   const [activeTab, setActiveTab] = useState("Analytics");
 
-  const { data: stats, isLoading: statsLoading } = useGetAdminStats({ query: { enabled: authed, queryKey: getGetAdminStatsQueryKey() } });
-  const { data: traffic } = useGetTrafficSources({ query: { enabled: authed, queryKey: getGetTrafficSourcesQueryKey() } });
-  const { data: weekly } = useGetWeeklyTraffic({ query: { enabled: authed, queryKey: getGetWeeklyTrafficQueryKey() } });
-  const { data: seoPages } = useGetTopSeoPages({ query: { enabled: authed, queryKey: getGetTopSeoPagesQueryKey() } });
+  const adminRequest = { headers: { "x-admin-password": ADMIN_PASSWORD } };
+
+  const { data: stats, isLoading: statsLoading } = useGetAdminStats({
+    query: { enabled: authed, queryKey: getGetAdminStatsQueryKey() },
+    request: adminRequest,
+  });
+
+  const { data: traffic } = useGetTrafficSources({
+    query: { enabled: authed, queryKey: getGetTrafficSourcesQueryKey() },
+    request: adminRequest,
+  });
+
+  const { data: weekly } = useGetWeeklyTraffic({
+    query: { enabled: authed, queryKey: getGetWeeklyTrafficQueryKey() },
+    request: adminRequest,
+  });
+
+  const { data: seoPages } = useGetTopSeoPages({
+    query: { enabled: authed, queryKey: getGetTopSeoPagesQueryKey() },
+    request: adminRequest,
+  });
+
+  const handleLogout = () => {
+    sessionStorage.removeItem(SESSION_KEY);
+    setAuthed(false);
+  };
+
+  // refresh authed state periodically to enforce session timeout
+  if (typeof window !== "undefined") {
+    setInterval(() => {
+      try {
+        const stored = sessionStorage.getItem(SESSION_KEY);
+        if (!stored) return setAuthed(false);
+        const data = JSON.parse(stored);
+        if (Date.now() - data.timestamp > SESSION_TIMEOUT_MS) {
+          sessionStorage.removeItem(SESSION_KEY);
+          setAuthed(false);
+        }
+      } catch {
+        sessionStorage.removeItem(SESSION_KEY);
+        setAuthed(false);
+      }
+    }, 60000);
+  }
 
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
 
@@ -148,9 +204,19 @@ export default function AdminPage() {
       <div className="max-w-screen-lg mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-lg font-bold text-foreground">FilmDhundo Admin Panel</h1>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            Live
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              Live
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

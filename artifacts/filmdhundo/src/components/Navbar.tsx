@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Search, Bookmark, Crown, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { useFamilySafe } from "@/hooks/useFamilySafe";
 import { useSearchMovies, getSearchMoviesQueryKey } from "@workspace/api-client-react";
 import { getTmdbImage, OTT_CONFIG } from "@/lib/ott";
 
@@ -48,6 +50,11 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
   );
 
   const results = searchData?.movies?.slice(0, 6) ?? [];
+
+  function FamilySafeToggle() {
+    const { isFamilySafe, toggle } = useFamilySafe();
+    return <Switch checked={isFamilySafe} onCheckedChange={toggle} aria-label="Family Safe Mode" />;
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
@@ -147,7 +154,7 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
                   const ott = OTT_CONFIG[movie.ott_platforms?.[0] ?? movie.ott_platform];
                   const posterUrl = getTmdbImage.posterThumb(movie.poster_path);
                   return (
-                    <a
+                    <Link
                       key={movie.id}
                       href={`/movies/${movie.id}`}
                       onClick={closeMobileSearch}
@@ -183,7 +190,7 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
                         </div>
                       </div>
                       <span className="text-xs text-yellow-500 shrink-0">★ {movie.vote_average}</span>
-                    </a>
+                    </Link>
                   );
                 })
               )}
@@ -215,6 +222,18 @@ export function Navbar({ onSearchClick, onMobileSearchChange }: NavbarProps) {
                 <Crown className="w-4 h-4" /> Premium
               </Button>
             </Link>
+          </div>
+          {/* Family Safe toggle */}
+          <div className="mt-1 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Family Safe Mode</p>
+                <p className="text-xs text-muted-foreground">Sirf U aur UA rated content</p>
+              </div>
+              <div className="shrink-0 flex items-center">
+                <FamilySafeToggle />
+              </div>
+            </div>
           </div>
         </div>
       )}

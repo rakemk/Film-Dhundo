@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getTrending, searchMovies, getNewReleases, getMovieDetail, getSimilarMovies } from "../lib/tmdb";
+import { getTrending, searchMovies, getNewReleases, getMovieDetail, getSimilarMovies, getUpcoming } from "../lib/tmdb";
 
 const router = Router();
 
@@ -44,6 +44,11 @@ router.get("/movies/:id/similar", async (req, res) => {
   }
   const movies = await getSimilarMovies(id);
   res.json(movies);
+});
+
+router.get("/movies/upcoming", async (req, res) => {
+  const result = await getUpcoming();
+  res.json(result);
 });
 
 export default router;

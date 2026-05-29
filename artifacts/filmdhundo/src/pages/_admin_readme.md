@@ -1,0 +1,1 @@
+Admin page protected by password via VITE_ADMIN_PASSWORD. Backend requires ADMIN_PASSWORD via x-admin-password header. Session timeout 30 minutes.

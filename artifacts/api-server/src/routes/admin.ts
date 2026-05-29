@@ -5,7 +5,21 @@ import { sql } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/admin/stats", async (req, res) => {
+// Simple header-based admin auth middleware. Set ADMIN_PASSWORD in the server env.
+function requireAdmin(req, res, next) {
+  const expected = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || "";
+  const provided = String(req.headers["x-admin-password"] || "");
+  if (!expected || !provided || provided !== expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  return next();
+}
+
+// Export for testing
+export { requireAdmin };
+
+router.get("/admin/stats", requireAdmin, async (req, res) => {
   const [premiumCount] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(usersTable)
@@ -30,7 +44,7 @@ router.get("/admin/stats", async (req, res) => {
   });
 });
 
-router.get("/admin/traffic-sources", async (req, res) => {
+router.get("/admin/traffic-sources", requireAdmin, async (req, res) => {
   res.json([
     { source: "Google Search (SEO)", sessions: 684, percentage: 54 },
     { source: "WhatsApp shares", sessions: 312, percentage: 25 },
@@ -39,13 +53,13 @@ router.get("/admin/traffic-sources", async (req, res) => {
   ]);
 });
 
-router.get("/admin/weekly-traffic", async (req, res) => {
+router.get("/admin/weekly-traffic", requireAdmin, async (req, res) => {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const visits = [820, 940, 1050, 980, 1120, 1380, 1247];
   res.json(days.map((day, i) => ({ day, visits: visits[i] })));
 });
 
-router.get("/admin/top-seo-pages", async (req, res) => {
+router.get("/admin/top-seo-pages", requireAdmin, async (req, res) => {
   res.json([
     { url: "filmdhundo.com/movies/jawan-2023", clicks: 184, status: "Indexed" },
     { url: "filmdhundo.com/movies/pathaan-2023", clicks: 142, status: "Indexed" },

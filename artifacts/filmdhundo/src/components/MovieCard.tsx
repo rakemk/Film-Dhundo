@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star, Clock } from "lucide-react";
+import { Star } from "lucide-react";
 import { OTT_CONFIG, getTmdbImage } from "@/lib/ott";
 import type { Movie } from "@workspace/api-client-react";
 
@@ -17,8 +17,8 @@ export function MovieCard({ movie, index = 0 }: MovieCardProps) {
   const isEager = index < 6;
 
   return (
-    <Link href={`/movies/${movie.id}`} data-testid={`card-movie-${movie.id}`}>
-      <div className="movie-card group cursor-pointer rounded-[10px] border border-border overflow-hidden bg-card transition-transform duration-200 hover:-translate-y-[3px] hover:shadow-lg">
+    <Link href={`/movies/${movie.id}`} className="block h-full" data-testid={`card-movie-${movie.id}`}>
+      <div className="movie-card group h-full cursor-pointer rounded-[10px] border border-border overflow-hidden bg-card transition-transform duration-200 hover:-translate-y-[3px] hover:shadow-lg">
         <div className="relative aspect-[2/3] bg-muted">
           {posterUrl ? (
             <img
@@ -64,9 +64,10 @@ export function MovieCard({ movie, index = 0 }: MovieCardProps) {
           </p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-0.5 text-yellow-500">
-              <Star className="w-3 h-3 fill-current" />
-              <span className="text-[11px] text-muted-foreground">{movie.vote_average}</span>
-            </div>
+                <span className="text-[11px] font-medium" style={{ color: '#F5C518' }}>IMDb</span>
+                <Star className="w-3 h-3 fill-current" />
+                <span className="text-[11px] text-muted-foreground">{movie.vote_average}</span>
+              </div>
             <div className="flex items-center gap-1">
               {year && <span className="text-[10px] text-muted-foreground">{year}</span>}
               <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
